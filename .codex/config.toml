@@ -1,0 +1,11 @@
+vault_name = "Codex Demo"
+
+[sync]
+type = "Git"
+remote = "origin"
+branch = "main"
+auto_commit_seconds = 60
+
+[appearance]
+theme = "alpharius"
+font_size = "Medium"
