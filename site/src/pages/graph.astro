@@ -1,0 +1,300 @@
+---
+import Base from '../layouts/Base.astro';
+import { buildGraphData } from '../lib/vault.js';
+
+const graphData = buildGraphData();
+const graphJson = JSON.stringify(graphData);
+---
+<Base title="Knowledge Graph" breadcrumb="Graph">
+  <div id="graph-container" style="position: relative; width: 100%; height: 70vh; min-height: 480px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden;">
+    <div id="graph-canvas" style="width: 100%; height: 100%;"></div>
+    <div id="graph-tooltip" style="position: absolute; bottom: 12px; left: 12px; font-size: 12px; color: var(--muted); opacity: 0; transition: opacity 0.15s; pointer-events: none;"></div>
+    <div id="graph-stats" style="position: absolute; top: 12px; right: 12px; font-size: 11px; color: var(--muted); opacity: 0.6;"></div>
+  </div>
+
+  <style>
+    #graph-container {
+      --graph-edge: rgba(42, 180, 200, 0.3);
+      --graph-edge-active: rgba(42, 180, 200, 0.9);
+      --graph-label: var(--fg);
+      margin: 1rem 0 2rem;
+    }
+    #graph-container svg {
+      cursor: grab;
+    }
+    #graph-container svg:active {
+      cursor: grabbing;
+    }
+  </style>
+
+  <script define:vars={{ graphJson }}>
+    // Graph rendering engine — adapted from the Codex desktop app
+    function codexGraph(data) {
+      if (window._codexGraph) cancelAnimationFrame(window._codexGraph.raf);
+      var c = document.getElementById('graph-canvas');
+      if (!c) return;
+      c.innerHTML = '';
+      if (!data.nodes.length) {
+        c.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:14px;">No notes to graph.</div>';
+        return;
+      }
+
+      var W = c.clientWidth || 800, H = c.clientHeight || 600;
+      var NODE_SCALE = 1.2;
+      var LINK_W = 1.0;
+      var TEXT_FADE = 0.4;
+
+      var REP = 1600;
+      var SPR = 0.008;
+      var SLEN = 140;
+      var CGRAV = 0.008;
+      var DAMP = 0.82;
+      var alpha = 1.0;
+
+      var groupColors = {
+        'root': '#2ab4c8',
+        'guides': '#1ab878',
+        'reference': '#c86418',
+      };
+
+      function nodeColor(n) {
+        return groupColors[n.group] || '#2ab4c8';
+      }
+
+      var nMap = {};
+      var nodes = data.nodes.map(function(n) {
+        var o = {
+          id: n.id, kind: n.kind, title: n.title, group: n.group,
+          tags: n.tags || [], slug: n.slug,
+          x: W/2 + (Math.random()-0.5)*W*0.6,
+          y: H/2 + (Math.random()-0.5)*H*0.6,
+          vx: 0, vy: 0, deg: 0, r: 5
+        };
+        nMap[o.id] = o;
+        return o;
+      });
+
+      var edges = data.edges.filter(function(e) { return nMap[e.source] && nMap[e.target]; });
+      edges.forEach(function(e) { nMap[e.source].deg++; nMap[e.target].deg++; });
+      nodes.forEach(function(n) { n.r = (5 + Math.min(n.deg, 12) * 1.5) * NODE_SCALE; });
+
+      // Stats
+      var stats = document.getElementById('graph-stats');
+      if (stats) stats.textContent = nodes.length + ' notes \xb7 ' + edges.length + ' links';
+
+      function tick() {
+        var i, j, a, b, dx, dy, d, f, fx, fy;
+        for (i = 0; i < nodes.length; i++) for (j = i+1; j < nodes.length; j++) {
+          a = nodes[i]; b = nodes[j];
+          dx = b.x - a.x; dy = b.y - a.y;
+          d = Math.sqrt(dx*dx + dy*dy) || 1;
+          f = REP / (d*d);
+          fx = dx/d*f; fy = dy/d*f;
+          a.vx -= fx; a.vy -= fy; b.vx += fx; b.vy += fy;
+        }
+        for (i = 0; i < edges.length; i++) {
+          a = nMap[edges[i].source]; b = nMap[edges[i].target];
+          if (!a || !b) continue;
+          dx = b.x - a.x; dy = b.y - a.y;
+          d = Math.sqrt(dx*dx + dy*dy) || 1;
+          f = (d - SLEN) * SPR;
+          fx = dx/d*f; fy = dy/d*f;
+          a.vx += fx; a.vy += fy; b.vx -= fx; b.vy -= fy;
+        }
+        for (i = 0; i < nodes.length; i++) {
+          nodes[i].vx += (W/2 - nodes[i].x) * CGRAV;
+          nodes[i].vy += (H/2 - nodes[i].y) * CGRAV;
+        }
+        for (i = 0; i < nodes.length; i++) {
+          a = nodes[i];
+          if (a._pinned) { a.vx = 0; a.vy = 0; continue; }
+          a.vx *= DAMP; a.vy *= DAMP;
+          a.x += a.vx * alpha; a.y += a.vy * alpha;
+        }
+        alpha *= 0.997;
+      }
+
+      // SVG
+      var NS = 'http://www.w3.org/2000/svg';
+      var svg = document.createElementNS(NS, 'svg');
+      svg.setAttribute('width', '100%');
+      svg.setAttribute('height', '100%');
+      svg.style.display = 'block';
+      c.appendChild(svg);
+
+      var g = document.createElementNS(NS, 'g');
+      svg.appendChild(g);
+
+      var eEls = edges.map(function(e) {
+        var l = document.createElementNS(NS, 'line');
+        l.setAttribute('stroke', 'rgba(42,180,200,0.35)');
+        l.setAttribute('stroke-width', LINK_W);
+        g.appendChild(l);
+        return { el: l, s: e.source, t: e.target };
+      });
+
+      var nEls = nodes.map(function(n) {
+        var gr = document.createElementNS(NS, 'g');
+        gr.style.cursor = 'pointer';
+
+        var ci = document.createElementNS(NS, 'circle');
+        ci.setAttribute('r', n.r);
+        ci.setAttribute('fill', nodeColor(n));
+        ci.setAttribute('fill-opacity', '0.85');
+        ci.setAttribute('stroke', nodeColor(n));
+        ci.setAttribute('stroke-width', '1.5');
+        ci.setAttribute('stroke-opacity', '0.3');
+        gr.appendChild(ci);
+
+        var showLabel = n.deg >= Math.max(1, Math.round((1 - TEXT_FADE) * 8)) || nodes.length < 30;
+        if (showLabel) {
+          var tx = document.createElementNS(NS, 'text');
+          var label = n.title.length > 24 ? n.title.slice(0, 22) + '\u2026' : n.title;
+          tx.textContent = label;
+          tx.setAttribute('dx', n.r + 5);
+          tx.setAttribute('dy', 4);
+          tx.setAttribute('fill', 'var(--fg)');
+          tx.setAttribute('font-size', '11');
+          tx.setAttribute('font-family', 'Inter, -apple-system, sans-serif');
+          tx.setAttribute('pointer-events', 'none');
+          gr.appendChild(tx);
+        }
+
+        // Click navigates to the note page
+        gr.addEventListener('click', function(evt) {
+          evt.stopPropagation();
+          if (didDrag) { didDrag = false; return; }
+          window.location.href = '/' + n.slug + '/';
+        });
+
+        gr.addEventListener('mouseenter', function() {
+          ci.setAttribute('fill-opacity', '1');
+          ci.setAttribute('stroke-opacity', '1');
+          ci.setAttribute('stroke', '#fff');
+          ci.setAttribute('stroke-width', '2.5');
+          ci.setAttribute('r', n.r * 1.3);
+          eEls.forEach(function(ee) {
+            if (ee.s === n.id || ee.t === n.id) {
+              ee.el.setAttribute('stroke', 'rgba(42,180,200,0.9)');
+              ee.el.setAttribute('stroke-width', LINK_W * 2.5);
+            }
+          });
+          var tip = document.getElementById('graph-tooltip');
+          if (tip) {
+            var parts = [n.title];
+            if (n.tags && n.tags.length) parts.push('#' + n.tags.join(' #'));
+            parts.push(n.deg + ' links');
+            tip.textContent = parts.join(' \xb7 ');
+            tip.style.opacity = '1';
+          }
+        });
+
+        gr.addEventListener('mouseleave', function() {
+          ci.setAttribute('fill-opacity', '0.85');
+          ci.setAttribute('stroke-opacity', '0.3');
+          ci.setAttribute('stroke', nodeColor(n));
+          ci.setAttribute('stroke-width', '1.5');
+          ci.setAttribute('r', n.r);
+          eEls.forEach(function(ee) {
+            ee.el.setAttribute('stroke', 'rgba(42,180,200,0.35)');
+            ee.el.setAttribute('stroke-width', LINK_W);
+          });
+          var tip = document.getElementById('graph-tooltip');
+          if (tip) tip.style.opacity = '0';
+        });
+
+        g.appendChild(gr);
+        return { el: gr, n: n, ci: ci };
+      });
+
+      // Zoom & pan
+      var zm = 1, px = 0, py = 0;
+      function upd() { g.setAttribute('transform', 'translate(' + px + ',' + py + ') scale(' + zm + ')'); }
+
+      svg.addEventListener('wheel', function(e) {
+        e.preventDefault();
+        var rect = svg.getBoundingClientRect();
+        var mx = e.clientX - rect.left, my = e.clientY - rect.top;
+        var delta = -e.deltaY;
+        if (e.deltaMode === 1) delta *= 16;
+        delta = Math.max(-30, Math.min(30, delta));
+        var f = 1 + delta * 0.003;
+        var nz = Math.max(0.1, Math.min(8, zm * f));
+        px = mx - (mx - px) * nz / zm;
+        py = my - (my - py) * nz / zm;
+        zm = nz; upd();
+      }, { passive: false });
+
+      var panning = false, psx = 0, psy = 0;
+      svg.addEventListener('mousedown', function(e) {
+        if (e.target === svg) { panning = true; psx = e.clientX - px; psy = e.clientY - py; }
+      });
+      var dragging = null, didDrag = false;
+      nEls.forEach(function(ne) {
+        ne.el.addEventListener('mousedown', function(e) {
+          e.stopPropagation();
+          dragging = ne.n;
+          dragging._pinned = true;
+          didDrag = false;
+        });
+      });
+      svg.addEventListener('mousemove', function(e) {
+        if (panning) { px = e.clientX - psx; py = e.clientY - psy; upd(); }
+        if (dragging) {
+          didDrag = true;
+          var rect = svg.getBoundingClientRect();
+          dragging.x = (e.clientX - rect.left - px) / zm;
+          dragging.y = (e.clientY - rect.top - py) / zm;
+          dragging.vx = 0; dragging.vy = 0;
+          alpha = Math.max(alpha, 0.3);
+        }
+      });
+      svg.addEventListener('mouseup', function() {
+        if (dragging) dragging._pinned = false;
+        panning = false; dragging = null;
+      });
+      svg.addEventListener('mouseleave', function() {
+        if (dragging) dragging._pinned = false;
+        panning = false; dragging = null;
+      });
+
+      function render() {
+        if (alpha > 0.001) tick();
+        for (var i = 0; i < eEls.length; i++) {
+          var s = nMap[eEls[i].s], t = nMap[eEls[i].t];
+          if (s && t) {
+            eEls[i].el.setAttribute('x1', s.x); eEls[i].el.setAttribute('y1', s.y);
+            eEls[i].el.setAttribute('x2', t.x); eEls[i].el.setAttribute('y2', t.y);
+          }
+        }
+        for (var j = 0; j < nEls.length; j++) {
+          nEls[j].el.setAttribute('transform', 'translate(' + nEls[j].n.x + ',' + nEls[j].n.y + ')');
+        }
+        window._codexGraph.raf = requestAnimationFrame(render);
+      }
+      window._codexGraph = { raf: 0 };
+      render();
+    }
+
+    // Initialize graph with vault data
+    var data = JSON.parse(graphJson);
+    // Wait for DOM
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function() { codexGraph(data); });
+    } else {
+      codexGraph(data);
+    }
+  </script>
+
+  <div style="margin-top: 1.5rem;">
+    <h3 style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 0.5rem;">Legend</h3>
+    <div style="display: flex; gap: 1.5rem; font-size: 0.85rem; color: var(--fg);">
+      <span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #2ab4c8; margin-right: 4px;"></span>Root</span>
+      <span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #1ab878; margin-right: 4px;"></span>Guides</span>
+      <span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #c86418; margin-right: 4px;"></span>Reference</span>
+    </div>
+    <p style="font-size: 0.82rem; color: var(--muted); margin-top: 0.6rem;">
+      Drag nodes to rearrange. Scroll to zoom. Click a node to open the note.
+    </p>
+  </div>
+</Base>

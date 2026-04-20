@@ -74,3 +74,64 @@ export function getAllPages() {
 
   return pages;
 }
+
+/** Build graph data (nodes + edges) from all vault notes and their wikilinks */
+export function buildGraphData() {
+  const allNotes = [];
+
+  // Collect all notes from all directories + root
+  for (const dir of ['', 'guides', 'reference']) {
+    const dirPath = dir ? path.join(VAULT_ROOT, dir) : VAULT_ROOT;
+    if (!fs.existsSync(dirPath)) continue;
+    for (const file of fs.readdirSync(dirPath)) {
+      if (!file.endsWith('.md') || file === 'README.md') continue;
+      const raw = fs.readFileSync(path.join(dirPath, file), 'utf-8');
+      const { meta, body } = parseFrontmatter(raw);
+      const title = meta.title || file.replace('.md', '');
+      const slug = file.replace('.md', '').toLowerCase().replace(/\s+/g, '-');
+      const tags = meta.tags || [];
+
+      // Extract wikilinks from body
+      const links = [];
+      const re = /\[\[([^\]]+)\]\]/g;
+      let m;
+      while ((m = re.exec(body)) !== null) {
+        links.push(m[1]);
+      }
+
+      allNotes.push({ title, slug, tags, links, group: dir || 'root' });
+    }
+  }
+
+  // Build node map by title (case-insensitive)
+  const nodeByTitle = {};
+  const nodes = allNotes.map((note, i) => {
+    const node = {
+      id: note.slug,
+      title: note.title,
+      kind: 'document',
+      group: note.group,
+      tags: note.tags,
+      slug: note.slug,
+    };
+    nodeByTitle[note.title.toLowerCase()] = node.id;
+    return node;
+  });
+
+  // Build edges from wikilinks
+  const edges = [];
+  const seen = new Set();
+  for (const note of allNotes) {
+    const sourceId = note.slug;
+    for (const linkTitle of note.links) {
+      const targetId = nodeByTitle[linkTitle.toLowerCase()];
+      if (!targetId || targetId === sourceId) continue;
+      const key = [sourceId, targetId].sort().join('::');
+      if (seen.has(key)) continue;
+      seen.add(key);
+      edges.push({ source: sourceId, target: targetId, kind: 'wikilink' });
+    }
+  }
+
+  return { nodes, edges };
+}

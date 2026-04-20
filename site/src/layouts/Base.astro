@@ -183,6 +183,29 @@ const pageTitle = title ? `${title} — Codex` : 'Codex — Knowledge Kernel';
 
       /* ── Navigation ──────────────────────────────────── */
 
+      .site-nav {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border);
+        font-size: 0.85rem;
+      }
+      .site-nav-brand {
+        font-weight: 700;
+        font-size: 1rem;
+        color: var(--fg-bright) !important;
+        margin-right: auto;
+      }
+      .site-nav a {
+        color: var(--muted);
+      }
+      .site-nav a:hover {
+        color: var(--accent);
+        text-decoration: none;
+      }
+
       .breadcrumb {
         font-size: 0.85rem;
         color: var(--muted);
@@ -214,6 +237,11 @@ const pageTitle = title ? `${title} — Codex` : 'Codex — Knowledge Kernel';
   </head>
   <body>
     <div class="shell">
+      <nav class="site-nav">
+        <a href="/" class="site-nav-brand">Codex</a>
+        <a href="/graph/">Graph</a>
+        <a href="https://github.com/styrene-lab/codex-demo-vault">GitHub</a>
+      </nav>
       {breadcrumb && (
         <div class="breadcrumb">
           <a href="/">Codex</a><span class="sep">/</span>{breadcrumb}
