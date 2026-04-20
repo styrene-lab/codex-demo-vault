@@ -1,118 +1,38 @@
 ---
-import fs from 'node:fs';
-import path from 'node:path';
+import Base from '../layouts/Base.astro';
+import { listNotes, renderNote } from '../lib/vault.js';
 
-// Read vault markdown files and build navigation
-const vaultRoot = path.resolve('../');
-const guides = fs.readdirSync(path.join(vaultRoot, 'guides'))
-  .filter(f => f.endsWith('.md'))
-  .map(f => {
-    const content = fs.readFileSync(path.join(vaultRoot, 'guides', f), 'utf-8');
-    const titleMatch = content.match(/title\s*=\s*"([^"]+)"/);
-    const title = titleMatch ? titleMatch[1] : f.replace('.md', '');
-    const slug = f.replace('.md', '').toLowerCase().replace(/\s+/g, '-');
-    return { title, slug, file: f };
-  })
-  .sort((a, b) => a.title.localeCompare(b.title));
-
-const refs = fs.readdirSync(path.join(vaultRoot, 'reference'))
-  .filter(f => f.endsWith('.md'))
-  .map(f => {
-    const content = fs.readFileSync(path.join(vaultRoot, 'reference', f), 'utf-8');
-    const titleMatch = content.match(/title\s*=\s*"([^"]+)"/);
-    const title = titleMatch ? titleMatch[1] : f.replace('.md', '');
-    const slug = f.replace('.md', '').toLowerCase().replace(/\s+/g, '-');
-    return { title, slug, file: f };
-  })
-  .sort((a, b) => a.title.localeCompare(b.title));
-
-// Read Welcome.md body
-const welcomeRaw = fs.readFileSync(path.join(vaultRoot, 'Welcome.md'), 'utf-8');
-const welcomeBody = welcomeRaw.replace(/^\+\+\+[\s\S]*?\+\+\+\s*/, '');
-
-// Simple markdown to HTML (headings, links, bold, lists, code)
-function md(text) {
-  return text
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\[\[([^\]]+)\]\]/g, (_, t) => {
-      const slug = t.toLowerCase().replace(/\s+/g, '-');
-      return `<a href="/${slug}">${t}</a>`;
-    })
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    .replace(/^- (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>\n?)+/gs, '<ul>$&</ul>')
-    .replace(/\n\n/g, '</p><p>')
-    .replace(/^(?!<[hup])/gm, '');
-}
+const guides = listNotes('guides');
+const refs = listNotes('reference');
+const { html: welcomeHtml } = renderNote('', 'Welcome.md');
 ---
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Codex — Knowledge Kernel</title>
-    <style>
-      :root {
-        --bg: #06080e;
-        --surface: #0c1018;
-        --border: #1a2233;
-        --fg: #c4d8e4;
-        --muted: #6a7a8a;
-        --accent: #6ecad8;
-        --font: 'Inter', system-ui, -apple-system, sans-serif;
-        --mono: 'JetBrains Mono', 'SF Mono', monospace;
-      }
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font-family: var(--font); background: var(--bg); color: var(--fg); line-height: 1.7; }
-      .shell { max-width: 860px; margin: 0 auto; padding: 3rem 2rem; }
-      h1 { font-size: 2rem; margin: 0 0 0.5rem; color: #fff; }
-      h2 { font-size: 1.3rem; margin: 2rem 0 0.5rem; color: #fff; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
-      h3 { font-size: 1.1rem; margin: 1.5rem 0 0.3rem; color: var(--accent); }
-      p { margin: 0.5rem 0; }
-      a { color: var(--accent); text-decoration: none; }
-      a:hover { text-decoration: underline; }
-      code { background: var(--surface); padding: 0.15rem 0.4rem; border-radius: 4px; font-family: var(--mono); font-size: 0.9em; }
-      ul { padding-left: 1.5rem; margin: 0.5rem 0; }
-      li { margin: 0.2rem 0; }
-      .nav { display: flex; gap: 2rem; margin-top: 2rem; }
-      .nav-section { flex: 1; }
-      .nav-section h3 { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.5rem; }
-      .nav-section a { display: block; padding: 0.3rem 0; color: var(--fg); }
-      .nav-section a:hover { color: var(--accent); }
-      .hero-badge { display: inline-block; padding: 0.2rem 0.8rem; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; font-size: 0.8rem; color: var(--muted); margin-bottom: 1rem; }
-      .content { margin-top: 2rem; }
-      .content h1 { display: none; }
-      footer { margin-top: 4rem; padding-top: 1rem; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.8rem; }
-    </style>
-  </head>
-  <body>
-    <div class="shell">
-      <div class="hero-badge">Codex v0.2.0 Beta</div>
-      <h1>Codex</h1>
-      <p style="color: var(--muted); font-size: 1.1rem; margin-bottom: 2rem;">Local-first knowledge management, built in Rust. Markdown is the source of truth.</p>
+<Base>
+  <div style="display: inline-block; padding: 0.2rem 0.8rem; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; font-size: 0.8rem; color: var(--muted); margin-bottom: 1rem;">
+    Codex v0.2.0 Beta
+  </div>
 
-      <div class="nav">
-        <div class="nav-section">
-          <h3>Guides</h3>
-          {guides.map(g => (
-            <a href={`/${g.slug}`}>{g.title}</a>
-          ))}
-        </div>
-        <div class="nav-section">
-          <h3>Reference</h3>
-          {refs.map(r => (
-            <a href={`/${r.slug}`}>{r.title}</a>
-          ))}
-        </div>
-      </div>
+  <h1 style="font-size: 2.2rem; margin-bottom: 0.3rem;">Codex</h1>
+  <p style="color: var(--muted); font-size: 1.05rem; margin-bottom: 2.5rem; line-height: 1.6;">
+    Local-first knowledge management, built in Rust.<br/>
+    Markdown is the source of truth.
+  </p>
 
-      <div class="content" set:html={md(welcomeBody)} />
-
-      <footer>
-        <p>This site is generated from the <a href="https://github.com/styrene-lab/codex-demo-vault">codex-demo-vault</a> — a live Codex vault. Edit the markdown, push, and the site rebuilds.</p>
-      </footer>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 3rem;">
+    <div>
+      <h3 style="color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.6rem; border: none; padding: 0;">Guides</h3>
+      {guides.map(g => (
+        <a href={`/${g.slug}/`} style="display: block; padding: 0.3rem 0; color: var(--fg); font-size: 0.95rem;">{g.title}</a>
+      ))}
     </div>
-  </body>
-</html>
+    <div>
+      <h3 style="color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.6rem; border: none; padding: 0;">Reference</h3>
+      {refs.map(r => (
+        <a href={`/${r.slug}/`} style="display: block; padding: 0.3rem 0; color: var(--fg); font-size: 0.95rem;">{r.title}</a>
+      ))}
+    </div>
+  </div>
+
+  <hr/>
+
+  <article set:html={welcomeHtml} />
+</Base>
