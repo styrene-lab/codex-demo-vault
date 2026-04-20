@@ -40,4 +40,4 @@ Codex is a local-first knowledge management app built in Rust. Your notes are pl
 
 ## About this vault
 
-This is the official demo vault for Codex. It's also the source for the [Codex documentation site](https://codex-demo-vault.pages.dev). Every note marked with `[publication] enabled = true` is published automatically.
+This is the official demo vault for Codex. It's also the source for the [Codex documentation site](https://demo.codex.styrene.io). Every note marked with `[publication] enabled = true` is published automatically.

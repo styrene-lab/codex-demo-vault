@@ -20,7 +20,7 @@ open /Applications/Codex.app --args --vault ~/Documents/codex-demo-vault
 
 ## Published site
 
-This vault is also published as a documentation site at **[codex-demo-vault.pages.dev](https://codex-demo-vault.pages.dev)**. The site is built with Astro and deployed to Cloudflare Pages. Every push to `main` rebuilds the site.
+This vault is also published as a documentation site at **[demo.codex.styrene.io](https://demo.codex.styrene.io)**. The site is built with Astro and deployed to Cloudflare Pages. Every push to `main` rebuilds the site.
 
 ### Build the site locally
 

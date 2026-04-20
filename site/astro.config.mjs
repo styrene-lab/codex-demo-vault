@@ -1,7 +1,7 @@
 import { defineConfig } from 'astro/config';
 
 export default defineConfig({
-  site: 'https://codex-demo-vault.pages.dev',
+  site: 'https://demo.codex.styrene.io',
   srcDir: './src',
   outDir: './dist',
 });
