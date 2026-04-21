@@ -26,7 +26,7 @@ visibility = "public"
 |----------|--------|
 | Cmd+N | New note |
 | Cmd+D | Today's daily note |
-| Cmd+Shift+D | New Excalidraw drawing |
+| Cmd+Shift+D | New drawing (Excalidraw) |
 | Cmd+Shift+N | New board |
 
 ## Editing
@@ -35,8 +35,17 @@ visibility = "public"
 |----------|--------|
 | Cmd+S | Save current note |
 | Cmd+E | Toggle source/live mode |
+| Cmd+B | Bold selected text |
+| Cmd+I | Italic selected text |
+| Cmd+K | Insert link |
 | Cmd+Shift+R | Rename current note |
 | Cmd+Shift+A | Toggle agent panel |
+
+## Tabs
+
+| Shortcut | Action |
+|----------|--------|
+| Double-click tab | Rename note |
 
 ## Sync
 

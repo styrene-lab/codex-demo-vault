@@ -12,7 +12,11 @@ visibility = "public"
 
 ### macOS
 
-Download `Codex-0.2.0.dmg` from the releases page. Open it, drag Codex to Applications. The app is notarized — Gatekeeper will pass it clean.
+Download the latest DMG from the [releases page](https://github.com/styrene-lab/codex/releases). Open it, drag Codex to Applications. The app is notarized — Gatekeeper will pass it clean.
+
+### Linux
+
+CI builds for x86_64 and aarch64 are available from [releases](https://github.com/styrene-lab/codex/releases). Requires `webkit2gtk-4.1` and GTK 3.
 
 ### iOS
 
@@ -20,40 +24,40 @@ Currently distributed via Ad-hoc or TestFlight. Contact the team for access.
 
 ## First launch
 
-When you open Codex for the first time, you'll see the Welcome screen with five options:
+When you open Codex for the first time, you'll see a simple welcome screen with one big button: **Get started**. Click it and Codex creates a notebook in your Documents folder with a welcome note to help you get oriented.
 
-1. **Open existing vault** — point Codex at a folder of markdown files (great for Obsidian users)
-2. **Create local vault** — start fresh
-3. **Clone remote vault** — clone a Git repo as your vault (recommended: clone this demo vault)
-4. **Import markdown folder** — copy files from another location
-5. **Seed demo publication** — scaffold an Astro site for publishing
+If you already have notes, click **"I already have notes"** to see more options:
+
+- **Open an existing folder** — point Codex at a folder of markdown files (works with Obsidian vaults)
+- **Clone from Git** — download a notebook from a Git repository and keep it synced
+- **Import markdown files** — copy files from another location into a new notebook
 
 ### Clone this demo vault
 
-The fastest way to get started:
+If you want to start with this documentation:
 
-1. Click **Clone remote vault**
-2. Enter: `git@github.com:styrene-lab/codex-demo-vault.git`
-3. Branch: `main`
-4. Codex clones the repo, indexes everything, and opens the vault
+1. Click **"I already have notes"**
+2. Click **Clone from Git**
+3. Enter: `git@github.com:styrene-lab/codex-demo-vault.git`
+4. Branch: `main`
+5. Codex clones the repo, indexes everything, and opens the notebook
 
-You'll see this documentation, ready to explore and edit.
+## Notebook structure
 
-## Vault structure
-
-A Codex vault is just a folder:
+A Codex notebook is just a folder:
 
 ```
-my-vault/
+my-notes/
   .codex/
-    config.toml        # vault settings
+    config.toml        # settings
     templates/         # note templates
-  .codex-local/        # SQLite index (auto-generated, gitignored)
   notes.md
   guides/
     some-guide.md
   daily/
-    2026-04-20.md
+    2026-04-21.md
+  drawings/
+    diagram.excalidraw
 ```
 
 The `.codex/` directory holds configuration. Everything else is your content.
@@ -70,6 +74,8 @@ tags = ["project", "idea"]
 
 Your content here.
 ```
+
+In live mode, the frontmatter is hidden — you just see your content. Click into the top of the document to see and edit it.
 
 YAML frontmatter (`---`) is also read, but Codex writes TOML.
 
